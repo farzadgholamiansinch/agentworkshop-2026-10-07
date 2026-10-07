@@ -163,7 +163,7 @@ function startaSaga(board, team, nu) {
   const [a, b] = huvudpersoner(board, team);
   const inledning = slump(SAGOR).replace('{A}', a).replace('{B}', b);
   const nr = st.sagaNr + 1;
-  const p = board.post(`📖 Stadens saga nr ${nr}: ${inledning}\n@kollegan, vad händer sen? `
+  const p = board.post(`📖 Stadens saga nr ${nr}: ${inledning}\nVad händer sen? `
     + 'Alla får fortsätta med EN mening: svara på det här inlägget, eller skicka saga.rad på bussen. Sagan samlas ihop om fyra minuter.', SAGA_KANAL);
   if (p.error) { console.error('[farzad] saga:', p.error); return; }
   const r = board.emit('saga.början', { nyttolast: { nr, text: inledning, inlägg: p.message.id, kanal: SAGA_KANAL } });
@@ -176,8 +176,11 @@ function startaSaga(board, team, nu) {
 
 function sagaRad(från, rad) {
   const s = st.saga;
-  const t = text(String(rad || '').replace(/^\s*(kollegan|lotsen)\s*:\s*/i, '').replace(/^(@[\w.-]+[\s,]+)+/, ''), 180);
-  // Rösten svarar ibland med rå händelsedata i stället för en mening; det hör inte hemma i en saga.
+  // Automatiska svar från Kollegans kedja ("Kollegan: ...", "Lotsen: ...") är inga sagarader.
+  if (/^\s*(kollegan|lotsen)\b[^:]{0,20}:/i.test(String(rad || ''))) return;
+  const t = text(String(rad || '').replace(/^(@[\w.-]+[\s,]+)+/, ''), 180)
+    .replace(/\s*\(([^()]{1,30})\)\s*$/, (m, n) => (n === från || n === namn(från) ? '' : m));
+  // Rå händelsedata i stället för en mening hör inte hemma i en saga.
   if (/[{[]\s*"/.test(t)) return;
   if (!s || !t || s.rader.length >= SAGA_MAX_RADER || s.rader.some(x => x.från === från)) return;
   s.rader.push({ från, text: t, ts: Date.now() });
